@@ -153,8 +153,23 @@ storage:
       read_only: false
       efs: true
 ```
+
 This manifest will result in an EFS volume being created at the environment level, with an Access Point and dedicated directory at the path /bitnami/wordpress in the EFS filesystem created specifically for your service. Your container will be able to access this directory and all its subdirectories at the  /bitnami/wordpress path in its own filesystem. The / wp-content directory and EFS filesystem will persist until you delete your environment.
 
+You can also customize the UID and GID used for the access point by specifying the uid and gid fields in advanced EFS configuration. If you do not specify a UID or GID, Copilot picks a pseudorandom UID and GID for the access point based on the CRC32 checksum of the service's name.
+
+Syntax for using GUID  1001 (docker deamon)
+
+```yaml
+storage:
+  volumes:
+    myManagedEFSVolume:
+      efs: 
+        uid: 1001 # Only accessible by non-root Docker Daemon user. 
+        gid: 1001 
+      path: /var/efs
+      read_only: false
+```
 ### Customize your healthcheck configuration
 The Load Balancer needs some specific settings enabled in order to work with wordpress. The `stickiness` key is crucial so redirects work as expected. 
 
@@ -176,6 +191,7 @@ http:
 ```
 
 ### Configure Autoscaling
+
 If you wish to have your service scale with traffic, you can  add the following to the `count` section of the manifest. Instead of a single number, you'll specify `count` as a map. This config will launch up to 2 copies of your service on dedicated Fargate capacity. Then, if traffic causes scaling events up to 3 or 4 copies, ECS will attempt to place those tasks on Fargate Spot, saving you nearly 75% over on-demand pricing.
 
 ```yaml
@@ -218,6 +234,54 @@ To customize these variables, modify the `variables` section of your manifest:
 variables:
   WORDPRESS_USERNAME: admin
   WORDPRESS_BLOG_NAME: My Blog
+```
+The final manifest yaml will look like as below
+
+```yaml
+name: fe
+type: Load Balanced Web Service
+
+# Distribute traffic to your service.
+http:
+  # Requests to this path will be forwarded to your service.
+  # To match all requests you can use the "/" path.
+  path: '/'
+  # You can specify a custom health check path. The default is "/".
+  healthcheck:
+    path: /
+    success_codes: '200-399'
+    interval: 60s
+    timeout: 5s
+    healthy_threshold: 3
+    unhealthy_threshold: 5
+  stickiness: true
+
+# Configuration for your containers and service.
+image:
+  build: Dockerfile
+  # Port exposed through your container to route traffic to it.
+  port: 8080
+
+cpu: 512       # Number of CPU units for the task.
+memory: 1024   # Amount of memory in MiB used by the task.
+count:         # Number of tasks that should be running in your service.
+  range:
+    min: 1
+    max: 2
+    spot_from: 0
+  cpu_percentage: 75
+exec: true     # Enable running commands in your container.
+
+storage:
+  volumes:
+    wpUserData:
+      path: /bitnami/wordpress
+      read_only: false
+      efs: true
+
+variables:
+  MYSQL_CLIENT_FLAVOR: mysql
+  WORDPRESS_BLOG_NAME: HELLO COPILOT
 ```
 
 ### Deploy your wordpress container

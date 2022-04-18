@@ -32,8 +32,8 @@ memory: 1024   # Amount of memory in MiB used by the task.
 count:         # Number of tasks that should be running in your service.
   range:
     min: 1
-    max: 4
-    spot_from: 3
+    max: 2
+    spot_from: 0
   cpu_percentage: 75
 exec: true     # Enable running commands in your container.
 
